@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>오늘의 팜넷 커피왕은?</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Do+Hyeon&display=swap');
+
+        body {
+            font-family: 'Do Hyeon', sans-serif;
+            background-color: #212121;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 10px;
+            color: #ecf0f1;
+            overflow: hidden;
+        }
+
+        /* ⚡ 익스트림 지진 효과 + 번쩍임 */
+        body.extreme-shake {
+            animation: shakeHard 0.5s ease-in-out infinite, flashBang 0.2s infinite;
+        }
+
+        @keyframes shakeHard {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-3px, -2px) rotate(-1deg); }
+            20% { transform: translate(-5px, 0px) rotate(1deg); }
+            30% { transform: translate(5px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(5px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+
+        @keyframes flashBang {
+            0%, 100% { background-color: #212121; }
+            50% { background-color: #e74c3c; }
+        }
+
+        h1 {
+            font-family: 'Black Han Sans', sans-serif;
+            font-size: 2rem;
+            margin-bottom: 20px;
+            color: #f1c40f;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 3px 3px 0px #c0392b;
+            transform: skew(-5deg);
+            text-align: center;
+        }
+
+        /* === 설정 화면 === */
+        #setup-area {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .input-group {
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #ecf0f1;
+        }
+
+        input[type="number"] {
+            width: 100px;
+            padding: 10px;
+            font-size: 2rem;
+            text-align: center;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Black Han Sans', sans-serif;
+            background-color: #ecf0f1;
+            color: #2c3e50;
+        }
+
+        /* === 게임 화면 === */
+        #game-area {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            background: linear-gradient(145deg, #e67e22, #d35400);
+            color: white;
+            border: 2px solid #fff;
+            padding: 10px 20px;
+            font-size: 1rem;
+            border-radius: 50px;
+            cursor: pointer;
+            font-family: 'Do Hyeon', sans-serif;
+            box-shadow: 0 4px 0 #a04000;
+            transition: all 0.1s;
+        }
+
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+        
+        .btn.restart { background: linear-gradient(145deg, #27ae60, #2ecc71); box-shadow: 0 4px 0 #219150; }
+        .btn.home { background: linear-gradient(145deg, #7f8c8d, #95a5a6); box-shadow: 0 4px 0 #566566; }
+
+        /* 🔥 수정된 카드 레이아웃 🔥 */
+        .card-container {
+            display: flex;
+            flex-wrap: wrap;       /* 줄바꿈 허용 */
+            justify-content: center; /* 가운데 정렬 */
+            gap: 8px;              /* 카드 사이 간격 */
+            max-width: 500px;
+            width: 100%;
+            perspective: 1000px;
+        }
+
+        .card {
+            /* 100%를 4로 나누면 25%. 간격(gap)을 고려하여 약간 작게 설정 */
+            width: calc(25% - 6px); 
+            
+            /* 핵심: 절대 늘어나거나 줄어들지 않음 (고정 크기 유지) */
+            flex-grow: 0;
+            flex-shrink: 0;
+            
+            aspect-ratio: 2 / 3;
+            position: relative;
+            cursor: pointer;
+            transform-style: preserve-3d;
+            transition: transform 0.2s;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+
+        /* PC 등 화면이 넓어지면 5개나 6개로 늘려도 되지만, 
+           요청하신 대로 '기본 4개' 느낌을 유지하기 위해 
+           큰 화면에서는 카드 크기를 제한합니다. */
+        @media (min-width: 600px) {
+            .card {
+                width: calc(20% - 10px); /* 화면 크면 한 줄에 5개 */
+            }
+        }
+
+        .card.flipped { transform: rotateY(180deg); }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 2px solid #333;
+            box-sizing: border-box;
+        }
+
+        .card-front {
+            background: repeating-linear-gradient(135deg, #2c3e50, #2c3e50 10px, #34495e 10px, #34495e 20px);
+            color: #f39c12;
+            font-size: 1.5rem; /* 글자 크기 조정 */
+            font-weight: bold;
+            text-shadow: 1px 1px 0 #000;
+        }
+
+        .card-back {
+            background-color: #ecf0f1;
+            color: #2c3e50;
+            transform: rotateY(180deg);
+            font-size: 1.1rem;
+            font-weight: bold;
+            flex-direction: column;
+        }
+
+        .card.broken .card-back {
+            background-color: #c0392b;
+            color: #fff;
+            border-color: #fff;
+        }
+        
+        .broken-icon { font-size: 2.5rem; margin-bottom: 5px; }
+
+        #result-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.1s;
+        }
+
+        #result-overlay.show { visibility: visible; opacity: 1; }
+
+        .result-box {
+            background-color: #fff;
+            color: #333;
+            padding: 30px;
+            width: 85%;
+            max-width: 320px;
+            border-radius: 15px;
+            text-align: center;
+            border: 5px solid #e74c3c;
+            transform: scale(0.8);
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        #result-overlay.show .result-box { transform: scale(1); }
+        
+        .result-message { 
+            font-family: 'Black Han Sans', sans-serif;
+            font-size: 3rem; 
+            color: #e74c3c; 
+            margin: 20px 0; 
+            text-shadow: 2px 2px 0px #000;
+            line-height: 1.2;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>☕ 오늘의 팜넷 커피왕은?</h1>
+    
+    <div id="setup-area">
+        <div class="input-group">
+            <label for="player-count">참여 인원은?</label>
+            <input type="number" id="player-count" value="10" min="2" max="50">
+            <span style="font-size: 1.5rem; margin-left: 5px;">명</span>
+        </div>
+        <button class="btn restart" onclick="startGame()">게임 시작 🔥</button>
+    </div>
+
+    <div id="game-area">
+        <div class="controls">
+            <button class="btn" onclick="shuffleCards()">섞기 🎲</button>
+            <button class="btn restart" onclick="resetGame()">다시 하기 🔄</button>
+            <button class="btn home" onclick="goHome()">인원 변경 ⚙️</button>
+        </div>
+        <div class="card-container" id="card-container"></div>
+    </div>
+
+    <div id="result-overlay">
+        <div class="result-box">
+            <div>🚨 매머드커피로! 🚨</div>
+            <div class="result-message">잘 마실게요^^</div>
+            <button class="btn restart" onclick="resetGame()">확인</button>
+        </div>
+    </div>
+
+    <script>
+        let totalCards = 10; 
+        let loserIndex = null;
+        let isGameOver = false;
+
+        const breakSound = new Audio('https://www.soundjay.com/misc/sounds/glass-break-1.mp3');
+        const explosionSound = new Audio('https://www.soundjay.com/mechanical/sounds/explosion-01.mp3');
+        
+        const setupArea = document.getElementById('setup-area');
+        const gameArea = document.getElementById('game-area');
+        const cardContainer = document.getElementById('card-container');
+        const resultOverlay = document.getElementById('result-overlay');
+        const playerCountInput = document.getElementById('player-count');
+
+        function startGame() {
+            const count = parseInt(playerCountInput.value);
+            
+            if (isNaN(count) || count < 2) {
+                alert("최소 2명 이상 입력해주세요!");
+                return;
+            }
+            if (count > 50) {
+                alert("인원이 너무 많습니다! (최대 50명)");
+                return;
+            }
+
+            totalCards = count;
+            setupArea.style.display = 'none';
+            gameArea.style.display = 'flex';
+            initGame();
+        }
+
+        function goHome() {
+            isGameOver = false;
+            document.body.classList.remove('extreme-shake');
+            resultOverlay.classList.remove('show');
+            gameArea.style.display = 'none';
+            setupArea.style.display = 'block';
+        }
+
+        function resetGame() {
+            initGame();
+        }
+
+        function initGame() {
+            isGameOver = false;
+            cardContainer.innerHTML = "";
+            resultOverlay.classList.remove('show');
+            document.body.classList.remove('extreme-shake');
+            
+            loserIndex = Math.floor(Math.random() * totalCards);
+
+            for (let i = 0; i < totalCards; i++) {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.dataset.index = i;
+                card.innerHTML = `<div class="card-front">?</div><div class="card-back"></div>`;
+                card.addEventListener('click', handleCardClick);
+                cardContainer.appendChild(card);
+            }
+            setTimeout(shuffleCards, 50);
+        }
+
+        function handleCardClick(e) {
+            const card = e.currentTarget;
+            if (isGameOver || card.classList.contains('flipped')) return;
+
+            card.classList.add('flipped');
+            const index = parseInt(card.dataset.index);
+            const cardBack = card.querySelector('.card-back');
+
+            if (index === loserIndex) {
+                isGameOver = true;
+                card.classList.add('broken');
+                cardBack.innerHTML = `<div class="broken-icon">💣</div>당첨!`;
+                
+                document.body.classList.add('extreme-shake');
+                
+                try { 
+                    breakSound.currentTime = 0;
+                    explosionSound.currentTime = 0;
+                    breakSound.play(); 
+                    explosionSound.play();
+                } catch(err) {}
+
+                if (navigator.vibrate) {
+                    navigator.vibrate([500, 100, 200, 100, 500]);
+                }
+
+                setTimeout(() => {
+                    document.body.classList.remove('extreme-shake');
+                    resultOverlay.classList.add('show');
+                }, 1200);
+            } else {
+                cardBack.innerText = "통과";
+            }
+        }
+
+        function shuffleCards() {
+            if (isGameOver) return;
+            const cards = Array.from(cardContainer.children);
+            if (cards.length === 0) return;
+
+            const firstRects = cards.map(card => card.getBoundingClientRect());
+
+            for (let i = cards.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                cardContainer.appendChild(cards[j]);
+            }
+
+            cards.forEach((card, i) => {
+                if(card.classList.contains('flipped')) return;
+
+                const lastRect = card.getBoundingClientRect();
+                const dx = firstRects[i].left - lastRect.left;
+                const dy = firstRects[i].top - lastRect.top;
+
+                card.style.transition = 'none';
+                card.style.transform = `translate(${dx}px, ${dy}px)`;
+
+                requestAnimationFrame(() => {
+                    card.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)';
+                    card.style.transform = '';
+                });
+            });
+        }
+    </script>
+</body>
+</html>
