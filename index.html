@@ -58,12 +58,95 @@
     background: #fafcff;
   }
   textarea { resize: vertical; min-height: 50px; }
+
+  .order-card {
+    border: 2px solid var(--blue);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 14px;
+    background: #f8faff;
+    position: relative;
+  }
+  .order-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .order-card-title {
+    font-weight: 800;
+    font-size: 14px;
+    color: var(--blue);
+  }
+  .remove-order-btn {
+    border: none;
+    background: none;
+    color: #999;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 4px 6px;
+  }
+  .order-items-label {
+    font-size: 13px;
+    color: #888;
+    margin: 16px 0 8px;
+    font-weight: 700;
+  }
+  .order-card.collapsed {
+    background: #fff;
+    border-color: #cfe0ff;
+  }
+  .complete-btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    background: #1aa15e;
+    color: #fff;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    margin-top: 14px;
+  }
+  .order-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 0 2px;
+  }
+  .summary-text {
+    font-size: 14px;
+    color: #333;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .summary-text::before {
+    content: "✓ ";
+    color: #1aa15e;
+    font-weight: 800;
+  }
+  .edit-order-btn {
+    flex: none;
+    border: 1px solid var(--blue);
+    background: #fff;
+    color: var(--blue);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
   .item-card {
     border: 1px solid var(--line);
     border-radius: 8px;
     padding: 12px;
     margin-bottom: 10px;
     position: relative;
+    background: #fff;
   }
   .item-row {
     display: flex;
@@ -122,6 +205,31 @@
     font-size: 14px;
     cursor: pointer;
     margin-top: 4px;
+  }
+  .add-order-btn {
+    width: 100%;
+    padding: 14px;
+    border: 2px dashed var(--blue);
+    background: #fff;
+    color: var(--blue);
+    border-radius: 10px;
+    font-weight: 800;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .address-search-row {
+    display: flex;
+    gap: 8px;
+  }
+  .address-search-btn {
+    flex: none;
+    padding: 0 16px;
+    border: 1px solid var(--blue);
+    background: #fff;
+    color: var(--blue);
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 14px;
   }
   .submit-bar {
     position: fixed;
@@ -182,31 +290,14 @@
 </div>
 
 <div class="section">
-  <h2>받는 분 (배송지)</h2>
-  <label>받는분 성명 *</label>
-  <input type="text" id="recipientName">
-  <label>연락처 *</label>
-  <input type="tel" id="recipientPhone" placeholder="010-0000-0000">
-  <label>배송지 주소 *</label>
-  <div style="display:flex; gap:8px;">
-    <input type="text" id="addressBase" placeholder="주소 검색을 눌러주세요" readonly style="background:#f0f2f5;">
-    <button type="button" id="addressSearchBtn" onclick="searchAddress()" style="flex:none; padding:0 16px; border:1px solid var(--blue); background:#fff; color:var(--blue); border-radius:6px; font-weight:700; font-size:14px;">검색</button>
-  </div>
-  <input type="text" id="addressDetail" placeholder="상세주소를 입력해주세요(동/호수 등)" style="margin-top:8px;">
-  <label>배송메모</label>
-  <input type="text" id="deliveryMemo" placeholder="예: 부재시 경비실에 부탁드립니다.">
-</div>
-
-<div class="section">
-  <h2>주문 상품</h2>
-  <div id="items"></div>
-  <button type="button" class="add-btn" onclick="addItem()">+ 상품 추가</button>
+  <h2>배송지 (한 번에 여러 곳으로 보낼 수 있어요)</h2>
+  <div id="orders"></div>
+  <button type="button" class="add-order-btn" onclick="addOrder()">+ 배송지 추가</button>
 </div>
 
 <div class="submit-bar">
   <button class="submit-btn" id="submitBtn" onclick="submitOrder()">발주서(엑셀파일) 생성</button>
   <div id="status"></div>
-  <a id="ezadminLink" href="https://ezadmin.co.kr" target="_blank" rel="noopener" style="display:none; text-align:center; margin-top:8px; font-size:13px; color:#1a6ef5; font-weight:700; text-decoration:none;">→ 이지어드민 열어서 업로드하기</a>
 </div>
 
 <div class="overlay" id="overlay">
@@ -214,9 +305,44 @@
   <div>발주서(엑셀파일) 생성 중...</div>
 </div>
 
+<template id="orderTemplate">
+  <div class="order-card">
+    <div class="order-card-header">
+      <span class="order-card-title">배송지</span>
+      <button type="button" class="remove-order-btn" data-action="remove-order">배송지 삭제</button>
+    </div>
+
+    <div class="order-detail">
+      <label>받는분 성명 *</label>
+      <input type="text" class="recipientName">
+      <label>연락처 *</label>
+      <input type="tel" class="recipientPhone" placeholder="010-0000-0000">
+      <label>배송지 주소 *</label>
+      <div class="address-search-row">
+        <input type="text" class="addressBase" placeholder="주소 검색을 눌러주세요" readonly style="background:#f0f2f5;">
+        <button type="button" class="address-search-btn" data-action="search-address">검색</button>
+      </div>
+      <input type="text" class="addressDetail" placeholder="상세주소를 입력해주세요(동/호수 등)" style="margin-top:8px;">
+      <label>배송메모</label>
+      <input type="text" class="deliveryMemo" placeholder="예: 부재시 경비실에 부탁드립니다.">
+
+      <div class="order-items-label">주문 상품</div>
+      <div class="items"></div>
+      <button type="button" class="add-btn" data-action="add-item">+ 상품 추가</button>
+
+      <button type="button" class="complete-btn" data-action="complete-order">입력 완료</button>
+    </div>
+
+    <div class="order-summary" style="display:none;">
+      <div class="summary-text"></div>
+      <button type="button" class="edit-order-btn" data-action="edit-order">수정</button>
+    </div>
+  </div>
+</template>
+
 <template id="itemTemplate">
   <div class="item-card">
-    <button type="button" class="remove-btn" onclick="removeItem(this)">&times;</button>
+    <button type="button" class="remove-btn" data-action="remove-item">&times;</button>
     <label>제품명 *</label>
     <input type="text" class="item-name" placeholder="상품명을 입력하세요">
     <div class="item-row" style="margin-top:10px;">
@@ -231,9 +357,9 @@
       <div class="qty-input">
         <label>수량 *</label>
         <div class="qty-stepper">
-          <button type="button" class="qty-btn" onclick="changeQty(this, -1)">&minus;</button>
-          <input type="text" inputmode="numeric" pattern="[0-9]*" class="item-qty" value="1" oninput="sanitizeQty(this)" onblur="sanitizeQty(this, true)">
-          <button type="button" class="qty-btn" onclick="changeQty(this, 1)">+</button>
+          <button type="button" class="qty-btn" data-action="qty-minus">&minus;</button>
+          <input type="text" inputmode="numeric" pattern="[0-9]*" class="item-qty" value="1">
+          <button type="button" class="qty-btn" data-action="qty-plus">+</button>
         </div>
       </div>
     </div>
@@ -241,17 +367,44 @@
 </template>
 
 <script>
-  function addItem() {
+  var orderCount = 0;
+
+  function addOrder() {
+    orderCount++;
+    var tpl = document.getElementById('orderTemplate');
+    var clone = tpl.content.cloneNode(true);
+    var card = clone.querySelector('.order-card');
+    card.querySelector('.order-card-title').textContent = '배송지 #' + orderCount;
+    document.getElementById('orders').appendChild(clone);
+    addItem(card); // 상품 1개 기본 생성
+    renumberOrders();
+  }
+
+  function removeOrder(btn) {
+    var cards = document.querySelectorAll('.order-card');
+    if (cards.length <= 1) return; // 최소 1개는 유지
+    btn.closest('.order-card').remove();
+    renumberOrders();
+  }
+
+  function renumberOrders() {
+    document.querySelectorAll('.order-card').forEach(function (card, i) {
+      card.querySelector('.order-card-title').textContent = '배송지 #' + (i + 1);
+    });
+  }
+
+  function addItem(orderCard) {
     var tpl = document.getElementById('itemTemplate');
     var clone = tpl.content.cloneNode(true);
-    document.getElementById('items').appendChild(clone);
+    orderCard.querySelector('.items').appendChild(clone);
   }
+
   function removeItem(btn) {
-    var cards = document.querySelectorAll('.item-card');
-    if (cards.length <= 1) return; // 최소 1개는 유지
+    var orderCard = btn.closest('.order-card');
+    var cards = orderCard.querySelectorAll('.item-card');
+    if (cards.length <= 1) return; // 배송지당 최소 1개는 유지
     btn.closest('.item-card').remove();
   }
-  addItem(); // 첫 상품 카드 1개 기본 생성
 
   function changeQty(btn, delta) {
     var input = btn.parentElement.querySelector('.item-qty');
@@ -266,39 +419,126 @@
     input.value = digits;
   }
 
-  var zipcode = ''; // 검색으로 선택된 우편번호 (화면엔 안 보이지만 발주 데이터에는 포함됨)
-
-  function searchAddress() {
+  function searchAddress(orderCard) {
     new daum.Postcode({
       oncomplete: function (data) {
         var base = data.roadAddress || data.jibunAddress;
-        document.getElementById('addressBase').value = base;
-        zipcode = data.zonecode;
-        document.getElementById('addressDetail').focus();
+        orderCard.querySelector('.addressBase').value = base;
+        orderCard.dataset.zipcode = data.zonecode;
+        orderCard.querySelector('.addressDetail').focus();
       },
     }).open();
   }
 
+  // 배송지 카드 하나를 읽어서 검증한다. 문제 있으면 {error}, 없으면 {delivery}를 반환.
+  function readOrderCard(card, tag) {
+    var recipientName = card.querySelector('.recipientName').value.trim();
+    var recipientPhone = card.querySelector('.recipientPhone').value.trim();
+    var addressBase = card.querySelector('.addressBase').value.trim();
+    var addressDetail = card.querySelector('.addressDetail').value.trim();
+    var address = addressDetail ? (addressBase + ' ' + addressDetail) : addressBase;
+    var deliveryMemo = card.querySelector('.deliveryMemo').value.trim();
+    var zipcode = card.dataset.zipcode || '';
+
+    if (!recipientName) return { error: tag + '받는분 성명을 입력해주세요' };
+    if (!recipientPhone) return { error: tag + '연락처를 입력해주세요' };
+    if (!address) return { error: tag + '배송지를 입력해주세요' };
+
+    var items = [];
+    card.querySelectorAll('.item-card').forEach(function (itemCard) {
+      var name = itemCard.querySelector('.item-name').value.trim();
+      var category = itemCard.querySelector('.item-category').value;
+      var qty = parseInt(itemCard.querySelector('.item-qty').value, 10);
+      items.push({ name: name, category: category, qty: qty });
+    });
+
+    if (items.length === 0) return { error: tag + '상품을 1개 이상 입력해주세요' };
+    for (var i = 0; i < items.length; i++) {
+      if (!items[i].name) return { error: tag + (i + 1) + '번째 제품명을 입력해주세요' };
+      if (!items[i].qty || items[i].qty < 1) return { error: tag + (i + 1) + '번째 수량을 확인해주세요' };
+    }
+
+    return {
+      delivery: {
+        recipient: { name: recipientName, phone: recipientPhone, zipcode: zipcode, address: address },
+        deliveryMemo: deliveryMemo,
+        items: items,
+      },
+    };
+  }
+
+  function completeOrder(btn) {
+    var card = btn.closest('.order-card');
+    var result = readOrderCard(card, '');
+    if (result.error) {
+      setStatus(result.error, 'error');
+      return;
+    }
+    setStatus('');
+    var d = result.delivery;
+    card.querySelector('.summary-text').textContent = d.recipient.name + ' · ' + d.recipient.phone + ' · 상품 ' + d.items.length + '개';
+    card.classList.add('collapsed');
+    card.querySelector('.order-detail').style.display = 'none';
+    card.querySelector('.order-summary').style.display = 'flex';
+  }
+
+  function editOrder(btn) {
+    var card = btn.closest('.order-card');
+    card.classList.remove('collapsed');
+    card.querySelector('.order-detail').style.display = '';
+    card.querySelector('.order-summary').style.display = 'none';
+  }
+
+  // 배송지 카드 / 상품 카드 안의 버튼 클릭을 한 곳에서 처리 (이벤트 위임)
+  document.getElementById('orders').addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    var action = btn.dataset.action;
+    if (action === 'remove-order') removeOrder(btn);
+    else if (action === 'add-item') addItem(btn.closest('.order-card'));
+    else if (action === 'remove-item') removeItem(btn);
+    else if (action === 'search-address') searchAddress(btn.closest('.order-card'));
+    else if (action === 'qty-minus') changeQty(btn, -1);
+    else if (action === 'qty-plus') changeQty(btn, 1);
+    else if (action === 'complete-order') completeOrder(btn);
+    else if (action === 'edit-order') editOrder(btn);
+  });
+  document.getElementById('orders').addEventListener('input', function (e) {
+    if (e.target.classList.contains('item-qty')) sanitizeQty(e.target);
+  });
+  document.getElementById('orders').addEventListener(
+    'blur',
+    function (e) {
+      if (e.target.classList.contains('item-qty')) sanitizeQty(e.target, true);
+    },
+    true
+  );
+
+  addOrder(); // 첫 배송지 카드 1개 기본 생성
+
   var HEADERS = ['발주처', '출고구분', '제품명', '수량', '받는분 성명', '우편번호', '배송지', '연락처', '배송메모', '비고', '택배사', '운송장번호', '주문자 성명'];
 
-  // 브라우저 안에서 바로 이지어드민 발주 양식(xlsx) 파일을 만든다. (서버 없음)
-  function buildOrderFile(order) {
-    var rows = order.items.map(function (item) {
-      return [
-        '', // 발주처 (비워둠 - 업로드 시 판매처는 이지어드민 쪽에서 지정됨)
-        item.category,
-        item.name,
-        item.qty,
-        order.recipient.name,
-        order.recipient.zipcode,
-        order.recipient.address,
-        order.recipient.phone,
-        order.deliveryMemo || '',
-        '', // 비고
-        '', // 택배사 - 이지어드민에서 채워짐
-        '', // 운송장번호 - 이지어드민에서 채워짐
-        order.orderer,
-      ];
+  // 브라우저 안에서 바로 이지어드민 발주 양식(xlsx)을 만들어 다운로드한다. (서버 없음)
+  function buildAndDownloadXlsx(orderer, deliveries) {
+    var rows = [];
+    deliveries.forEach(function (d) {
+      d.items.forEach(function (item) {
+        rows.push([
+          '', // 발주처 (비워둠 - 업로드 시 판매처는 이지어드민 쪽에서 지정됨)
+          item.category,
+          item.name,
+          item.qty,
+          d.recipient.name,
+          d.recipient.zipcode,
+          d.recipient.address,
+          d.recipient.phone,
+          d.deliveryMemo || '',
+          '', // 비고
+          '', // 택배사 - 이지어드민에서 채워짐
+          '', // 운송장번호 - 이지어드민에서 채워짐
+          orderer,
+        ]);
+      });
     });
 
     var sheetData = [HEADERS].concat(rows);
@@ -308,44 +548,11 @@
 
     var today = new Date();
     var dateStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-    var label = order.recipient.name || order.orderer || '발주';
+    var label = deliveries.length > 1 ? (deliveries[0].recipient.name + ' 외 ' + (deliveries.length - 1) + '건') : (deliveries[0].recipient.name || orderer || '발주');
     var fileName = '발주_' + label + '_' + dateStr + '.xlsx';
 
-    var arrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    var mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-    var file = new File([arrayBuffer], fileName, { type: mimeType });
-    return { file: file, fileName: fileName };
-  }
-
-  // 가능하면 카카오톡/문자/이메일 등 네이티브 공유창으로 바로 보내고,
-  // 공유 API를 지원 안 하는 브라우저(주로 PC)에서는 다운로드로 대체한다.
-  function shareOrDownload(file, fileName) {
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      return navigator.share({
-        files: [file],
-        title: fileName,
-        text: '발주 파일입니다. 이지어드민에 업로드해주세요.',
-      }).then(function () {
-        return 'shared';
-      }).catch(function (err) {
-        if (err.name === 'AbortError') return 'cancelled'; // 사용자가 공유창 닫음
-        downloadFile(file, fileName);
-        return 'downloaded';
-      });
-    }
-    downloadFile(file, fileName);
-    return Promise.resolve('downloaded');
-  }
-
-  function downloadFile(file, fileName) {
-    var url = URL.createObjectURL(file);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+    XLSX.writeFile(wb, fileName);
+    return rows.length;
   }
 
   function setStatus(msg, cls) {
@@ -356,73 +563,34 @@
 
   function submitOrder() {
     var orderer = document.getElementById('orderer').value.trim();
-    var recipientName = document.getElementById('recipientName').value.trim();
-    var recipientPhone = document.getElementById('recipientPhone').value.trim();
-    var addressBase = document.getElementById('addressBase').value.trim();
-    var addressDetail = document.getElementById('addressDetail').value.trim();
-    var address = addressDetail ? (addressBase + ' ' + addressDetail) : addressBase;
-    var deliveryMemo = document.getElementById('deliveryMemo').value.trim();
+    var orderCards = Array.from(document.querySelectorAll('.order-card'));
+    var deliveries = [];
 
-    var items = [];
-    document.querySelectorAll('.item-card').forEach(function (card) {
-      var name = card.querySelector('.item-name').value.trim();
-      var category = card.querySelector('.item-category').value;
-      var qty = parseInt(card.querySelector('.item-qty').value, 10);
-      items.push({ name: name, category: category, qty: qty });
-    });
-
-    if (!recipientName) return setStatus('받는분 성명을 입력해주세요', 'error');
-    if (!recipientPhone) return setStatus('연락처를 입력해주세요', 'error');
-    if (!address) return setStatus('배송지를 입력해주세요', 'error');
-    if (items.length === 0) return setStatus('상품을 1개 이상 입력해주세요', 'error');
-    for (var i = 0; i < items.length; i++) {
-      if (!items[i].name) return setStatus((i + 1) + '번째 제품명을 입력해주세요', 'error');
-      if (!items[i].qty || items[i].qty < 1) return setStatus((i + 1) + '번째 수량을 확인해주세요', 'error');
+    for (var oi = 0; oi < orderCards.length; oi++) {
+      var tag = orderCards.length > 1 ? ('배송지 #' + (oi + 1) + ' - ') : '';
+      var result = readOrderCard(orderCards[oi], tag);
+      if (result.error) return setStatus(result.error, 'error');
+      deliveries.push(result.delivery);
     }
-
-    var order = {
-      orderer: orderer,
-      recipient: { name: recipientName, phone: recipientPhone, zipcode: zipcode, address: address },
-      deliveryMemo: deliveryMemo,
-      items: items,
-    };
 
     document.getElementById('overlay').classList.add('show');
     document.getElementById('submitBtn').disabled = true;
     setStatus('');
 
-    Promise.resolve()
-      .then(function () {
-        var built = buildOrderFile(order);
-        return shareOrDownload(built.file, built.fileName);
-      })
-      .then(function (result) {
-        if (result === 'shared') {
-          setStatus('발주 파일을 전송했습니다. (' + order.items.length + '개 품목)', 'ok');
-        } else if (result === 'downloaded') {
-          setStatus('발주 파일이 다운로드되었습니다. (' + order.items.length + '개 품목) 이지어드민에 업로드해주세요.', 'ok');
-          document.getElementById('ezadminLink').style.display = 'block';
-        } else {
-          setStatus('전송을 취소했습니다.', '');
-          return; // 폼 초기화 안 함 - 재시도 가능하게
-        }
-        document.getElementById('items').innerHTML = '';
-        addItem();
-        document.getElementById('orderer').value = '';
-        document.getElementById('recipientName').value = '';
-        document.getElementById('recipientPhone').value = '';
-        document.getElementById('addressBase').value = '';
-        document.getElementById('addressDetail').value = '';
-        document.getElementById('deliveryMemo').value = '';
-        zipcode = '';
-      })
-      .catch(function (err) {
-        setStatus(err.message || '오류가 발생했습니다. 다시 시도해주세요.', 'error');
-      })
-      .finally(function () {
-        document.getElementById('overlay').classList.remove('show');
-        document.getElementById('submitBtn').disabled = false;
-      });
+    try {
+      var rowCount = buildAndDownloadXlsx(orderer, deliveries);
+      setStatus('발주 파일이 다운로드되었습니다. (배송지 ' + deliveries.length + '곳, 총 ' + rowCount + '개 품목) 이지어드민에 업로드해주세요.', 'ok');
+
+      document.getElementById('orders').innerHTML = '';
+      orderCount = 0;
+      addOrder();
+      document.getElementById('orderer').value = '';
+    } catch (err) {
+      setStatus(err.message || '오류가 발생했습니다. 다시 시도해주세요.', 'error');
+    } finally {
+      document.getElementById('overlay').classList.remove('show');
+      document.getElementById('submitBtn').disabled = false;
+    }
   }
 </script>
 
