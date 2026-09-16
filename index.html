@@ -206,6 +206,7 @@
 <div class="submit-bar">
   <button class="submit-btn" id="submitBtn" onclick="submitOrder()">발주서(엑셀파일) 생성</button>
   <div id="status"></div>
+  <a id="ezadminLink" href="https://ezadmin.co.kr" target="_blank" rel="noopener" style="display:none; text-align:center; margin-top:8px; font-size:13px; color:#1a6ef5; font-weight:700; text-decoration:none;">→ 이지어드민 열어서 업로드하기</a>
 </div>
 
 <div class="overlay" id="overlay">
@@ -280,8 +281,8 @@
 
   var HEADERS = ['발주처', '출고구분', '제품명', '수량', '받는분 성명', '우편번호', '배송지', '연락처', '배송메모', '비고', '택배사', '운송장번호', '주문자 성명'];
 
-  // 브라우저 안에서 바로 이지어드민 발주 양식(xlsx)을 만들어 다운로드한다. (서버 없음)
-  function buildAndDownloadXlsx(order) {
+  // 브라우저 안에서 바로 이지어드민 발주 양식(xlsx) 파일을 만든다. (서버 없음)
+  function buildOrderFile(order) {
     var rows = order.items.map(function (item) {
       return [
         '', // 발주처 (비워둠 - 업로드 시 판매처는 이지어드민 쪽에서 지정됨)
@@ -308,7 +309,43 @@
     var today = new Date();
     var dateStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
     var label = order.recipient.name || order.orderer || '발주';
-    XLSX.writeFile(wb, '발주_' + label + '_' + dateStr + '.xlsx');
+    var fileName = '발주_' + label + '_' + dateStr + '.xlsx';
+
+    var arrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    var mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    var file = new File([arrayBuffer], fileName, { type: mimeType });
+    return { file: file, fileName: fileName };
+  }
+
+  // 가능하면 카카오톡/문자/이메일 등 네이티브 공유창으로 바로 보내고,
+  // 공유 API를 지원 안 하는 브라우저(주로 PC)에서는 다운로드로 대체한다.
+  function shareOrDownload(file, fileName) {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      return navigator.share({
+        files: [file],
+        title: fileName,
+        text: '발주 파일입니다. 이지어드민에 업로드해주세요.',
+      }).then(function () {
+        return 'shared';
+      }).catch(function (err) {
+        if (err.name === 'AbortError') return 'cancelled'; // 사용자가 공유창 닫음
+        downloadFile(file, fileName);
+        return 'downloaded';
+      });
+    }
+    downloadFile(file, fileName);
+    return Promise.resolve('downloaded');
+  }
+
+  function downloadFile(file, fileName) {
+    var url = URL.createObjectURL(file);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
   }
 
   function setStatus(msg, cls) {
@@ -354,24 +391,38 @@
     document.getElementById('submitBtn').disabled = true;
     setStatus('');
 
-    try {
-      buildAndDownloadXlsx(order);
-      setStatus('발주 파일이 다운로드되었습니다. (' + order.items.length + '개 품목) 이지어드민에 업로드해주세요.', 'ok');
-      document.getElementById('items').innerHTML = '';
-      addItem();
-      document.getElementById('orderer').value = '';
-      document.getElementById('recipientName').value = '';
-      document.getElementById('recipientPhone').value = '';
-      document.getElementById('addressBase').value = '';
-      document.getElementById('addressDetail').value = '';
-      document.getElementById('deliveryMemo').value = '';
-      zipcode = '';
-    } catch (err) {
-      setStatus(err.message || '오류가 발생했습니다. 다시 시도해주세요.', 'error');
-    } finally {
-      document.getElementById('overlay').classList.remove('show');
-      document.getElementById('submitBtn').disabled = false;
-    }
+    Promise.resolve()
+      .then(function () {
+        var built = buildOrderFile(order);
+        return shareOrDownload(built.file, built.fileName);
+      })
+      .then(function (result) {
+        if (result === 'shared') {
+          setStatus('발주 파일을 전송했습니다. (' + order.items.length + '개 품목)', 'ok');
+        } else if (result === 'downloaded') {
+          setStatus('발주 파일이 다운로드되었습니다. (' + order.items.length + '개 품목) 이지어드민에 업로드해주세요.', 'ok');
+          document.getElementById('ezadminLink').style.display = 'block';
+        } else {
+          setStatus('전송을 취소했습니다.', '');
+          return; // 폼 초기화 안 함 - 재시도 가능하게
+        }
+        document.getElementById('items').innerHTML = '';
+        addItem();
+        document.getElementById('orderer').value = '';
+        document.getElementById('recipientName').value = '';
+        document.getElementById('recipientPhone').value = '';
+        document.getElementById('addressBase').value = '';
+        document.getElementById('addressDetail').value = '';
+        document.getElementById('deliveryMemo').value = '';
+        zipcode = '';
+      })
+      .catch(function (err) {
+        setStatus(err.message || '오류가 발생했습니다. 다시 시도해주세요.', 'error');
+      })
+      .finally(function () {
+        document.getElementById('overlay').classList.remove('show');
+        document.getElementById('submitBtn').disabled = false;
+      });
   }
 </script>
 
