@@ -322,6 +322,34 @@
   }
   #status.error { color: var(--red); }
   #status.ok { color: #1aa15e; }
+  .toast {
+    position: fixed;
+    left: 50%;
+    top: 42%;
+    transform: translate(-50%, -50%);
+    z-index: 200;
+    max-width: 80vw;
+    padding: 20px 26px;
+    border-radius: 14px;
+    background: rgba(30, 30, 30, 0.92);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.4;
+    text-align: center;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .toast.show { opacity: 1; }
+  .toast::before {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 26px;
+  }
+  .toast.ok::before { content: "✓"; color: #4cd98a; }
+  .toast.error::before { content: "!"; color: #ff6b62; }
   .overlay {
     display: none;
     position: fixed; inset: 0;
@@ -390,6 +418,8 @@
   <button class="submit-btn" id="submitBtn" onclick="submitOrder()">발주서(엑셀파일) 생성</button>
   <div id="status"></div>
 </div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <div class="overlay" id="overlay">
   <div class="spinner"></div>
@@ -620,12 +650,21 @@
     return '';
   }
 
+  var toastTimer = null;
+  function showToast(msg, type) {
+    var el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'toast ' + type + ' show';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.remove('show'); }, 2000);
+  }
+
   function completeOrder(btn) {
     var card = btn.closest('.order-card');
     var error = collapseCard(card);
-    if (error) return setStatus(error, 'error');
+    if (error) return showToast(error, 'error');
     var title = card.querySelector('.order-card-title').textContent;
-    setStatus(title + (mode === 'edit' ? ' 수정을 완료하였습니다' : ' 입력을 완료하였습니다'), 'ok');
+    showToast(title + (mode === 'edit' ? ' 수정을 완료하였습니다' : ' 입력을 완료하였습니다'), 'ok');
   }
 
   function editOrder(btn) {
