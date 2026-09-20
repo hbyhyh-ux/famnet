@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>팜넷(협) 발주</title>
+<title>팜넷 발주서 도우미</title>
 <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -30,9 +30,26 @@
     z-index: 10;
   }
   .header-title {
-    padding: 14px 20px 8px;
+    padding: 14px 96px 8px; /* 좌우 여백을 같게 두어 제목은 가운데, 오른쪽 버튼 자리는 확보 */
     font-weight: 800;
-    font-size: 18px;
+    font-size: 17px;
+  }
+  .ez-link {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 6px 10px;
+    border: 1px solid var(--blue);
+    border-radius: 14px;
+    background: #fff;
+    color: var(--blue);
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  @media (max-width: 340px) {
+    .header-title { font-size: 14px; }
   }
   .tabs { display: flex; }
   .tab {
@@ -329,7 +346,8 @@
 <body>
 
 <header>
-  <div class="header-title">팜넷(협) 발주</div>
+  <div class="header-title">팜넷 발주서 도우미</div>
+  <a class="ez-link" href="https://www.ezadmin.co.kr/index.html" target="_blank" rel="noopener noreferrer">이지어드민 ↗</a>
   <div class="tabs">
     <button type="button" class="tab active" id="tabCreate" onclick="setMode('create')">발주서 생성</button>
     <button type="button" class="tab" id="tabEdit" onclick="setMode('edit')">발주서 수정</button>
@@ -603,8 +621,11 @@
   }
 
   function completeOrder(btn) {
-    var error = collapseCard(btn.closest('.order-card'));
-    setStatus(error, error ? 'error' : '');
+    var card = btn.closest('.order-card');
+    var error = collapseCard(card);
+    if (error) return setStatus(error, 'error');
+    var title = card.querySelector('.order-card-title').textContent;
+    setStatus(title + (mode === 'edit' ? ' 수정을 완료하였습니다' : ' 입력을 완료하였습니다'), 'ok');
   }
 
   function editOrder(btn) {
