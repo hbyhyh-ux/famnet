@@ -23,14 +23,32 @@
   }
   header {
     background: #fff;
-    padding: 16px 20px;
     text-align: center;
-    font-weight: 800;
-    font-size: 18px;
     border-bottom: 1px solid var(--line);
     position: sticky;
     top: 0;
     z-index: 10;
+  }
+  .header-title {
+    padding: 14px 20px 8px;
+    font-weight: 800;
+    font-size: 18px;
+  }
+  .tabs { display: flex; }
+  .tab {
+    flex: 1;
+    padding: 12px 0;
+    border: none;
+    border-bottom: 3px solid transparent;
+    background: none;
+    font-size: 15px;
+    font-weight: 700;
+    color: #888;
+    cursor: pointer;
+  }
+  .tab.active {
+    color: var(--blue);
+    border-bottom-color: var(--blue);
   }
   .section {
     background: #fff;
@@ -57,7 +75,36 @@
     font-size: 15px;
     background: #fafcff;
   }
+  input[readonly] { background: #f0f2f5; }
   textarea { resize: vertical; min-height: 50px; }
+
+  .file-btn {
+    display: block;
+    margin: 0;
+    padding: 16px;
+    border: 2px dashed var(--blue);
+    border-radius: 10px;
+    background: #eef4ff;
+    color: var(--blue);
+    text-align: center;
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .file-name {
+    margin-top: 10px;
+    font-size: 13px;
+    color: #333;
+    word-break: break-all;
+  }
+  .hint {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #888;
+  }
+
+  .edit-only { display: none; }
+  #editView .edit-only { display: block; }
 
   .order-card {
     border: 2px solid var(--blue);
@@ -281,18 +328,44 @@
 </head>
 <body>
 
-<header>팜넷(협) 발주 입력</header>
+<header>
+  <div class="header-title">팜넷(협) 발주</div>
+  <div class="tabs">
+    <button type="button" class="tab active" id="tabCreate" onclick="setMode('create')">발주서 생성</button>
+    <button type="button" class="tab" id="tabEdit" onclick="setMode('edit')">발주서 수정</button>
+  </div>
+</header>
 
-<div class="section">
-  <h2>주문자 정보</h2>
-  <label>주문자 성명</label>
-  <input type="text" id="orderer" placeholder="선택 입력 사항입니다.">
+<div id="createView">
+  <div class="section">
+    <h2>주문자 정보</h2>
+    <label>주문자 성명</label>
+    <input type="text" id="orderer" placeholder="선택 입력 사항입니다.">
+  </div>
+
+  <div class="section">
+    <h2>배송지 (한 번에 여러 곳으로 보낼 수 있어요)</h2>
+    <div id="orders"></div>
+    <button type="button" class="add-order-btn" onclick="addOrder(document.getElementById('orders'))">+ 배송지 추가</button>
+  </div>
 </div>
 
-<div class="section">
-  <h2>배송지 (한 번에 여러 곳으로 보낼 수 있어요)</h2>
-  <div id="orders"></div>
-  <button type="button" class="add-order-btn" onclick="addOrder()">+ 배송지 추가</button>
+<div id="editView" style="display:none;">
+  <div class="section">
+    <h2>수정할 발주서 첨부</h2>
+    <label class="file-btn">
+      엑셀 파일 선택 (.xlsx)
+      <input type="file" id="editFile" accept=".xlsx,.xls" hidden>
+    </label>
+    <div class="file-name" id="editFileName"></div>
+    <div class="hint">이 앱에서 만든 발주서를 첨부하면 내용을 불러옵니다.</div>
+  </div>
+
+  <div class="section" id="editOrdersSection" style="display:none;">
+    <h2>배송지 (수정)</h2>
+    <div id="editOrders"></div>
+    <button type="button" class="add-order-btn" onclick="addOrder(document.getElementById('editOrders'))">+ 배송지 추가</button>
+  </div>
 </div>
 
 <div class="submit-bar">
@@ -302,7 +375,7 @@
 
 <div class="overlay" id="overlay">
   <div class="spinner"></div>
-  <div>발주서(엑셀파일) 생성 중...</div>
+  <div id="overlayText">발주서(엑셀파일) 생성 중...</div>
 </div>
 
 <template id="orderTemplate">
@@ -313,16 +386,24 @@
     </div>
 
     <div class="order-detail">
+      <div class="edit-only">
+        <label>주문자 성명</label>
+        <input type="text" class="ordererCard" placeholder="선택 입력 사항입니다.">
+      </div>
       <label>받는분 성명 *</label>
       <input type="text" class="recipientName">
       <label>연락처 *</label>
       <input type="tel" class="recipientPhone" placeholder="010-0000-0000">
       <label>배송지 주소 *</label>
       <div class="address-search-row">
-        <input type="text" class="addressBase" placeholder="주소 검색을 눌러주세요" readonly style="background:#f0f2f5;">
+        <input type="text" class="addressBase" placeholder="주소 검색을 눌러주세요" readonly>
         <button type="button" class="address-search-btn" data-action="search-address">검색</button>
       </div>
       <input type="text" class="addressDetail" placeholder="상세주소를 입력해주세요(동/호수 등)" style="margin-top:8px;">
+      <div class="edit-only">
+        <label>우편번호</label>
+        <input type="text" class="zipcodeInput" inputmode="numeric">
+      </div>
       <label>배송메모</label>
       <input type="text" class="deliveryMemo" placeholder="예: 부재시 경비실에 부탁드립니다.">
 
@@ -367,42 +448,49 @@
 </template>
 
 <script>
-  var orderCount = 0;
+  var HEADERS = ['발주처', '출고구분', '제품명', '수량', '받는분 성명', '우편번호', '배송지', '연락처', '배송메모', '비고', '택배사', '운송장번호', '주문자 성명'];
+  var EXTRA_HEADERS = ['발주처', '비고', '택배사', '운송장번호']; // 화면에는 없지만 불러온 값은 그대로 보존
 
-  function addOrder() {
-    orderCount++;
-    var tpl = document.getElementById('orderTemplate');
-    var clone = tpl.content.cloneNode(true);
+  var mode = 'create';
+  var editLoaded = false;
+  var loadedBaseName = '';
+
+  /* ---------- 배송지 / 상품 카드 ---------- */
+
+  function addOrder(container, data) {
+    var clone = document.getElementById('orderTemplate').content.cloneNode(true);
     var card = clone.querySelector('.order-card');
-    card.querySelector('.order-card-title').textContent = '배송지 #' + orderCount;
-    document.getElementById('orders').appendChild(clone);
-    addItem(card); // 상품 1개 기본 생성
-    renumberOrders();
+    container.appendChild(clone);
+    if (data) fillOrderCard(card, data);
+    else addItem(card); // 상품 1개 기본 생성
+    renumberOrders(container);
+    return card;
   }
 
   function removeOrder(btn) {
-    var cards = document.querySelectorAll('.order-card');
-    if (cards.length <= 1) return; // 최소 1개는 유지
-    btn.closest('.order-card').remove();
-    renumberOrders();
+    var card = btn.closest('.order-card');
+    var container = card.parentElement;
+    if (container.querySelectorAll('.order-card').length <= 1) return; // 최소 1개는 유지
+    card.remove();
+    renumberOrders(container);
   }
 
-  function renumberOrders() {
-    document.querySelectorAll('.order-card').forEach(function (card, i) {
+  function renumberOrders(container) {
+    container.querySelectorAll('.order-card').forEach(function (card, i) {
       card.querySelector('.order-card-title').textContent = '배송지 #' + (i + 1);
     });
   }
 
   function addItem(orderCard) {
-    var tpl = document.getElementById('itemTemplate');
-    var clone = tpl.content.cloneNode(true);
+    var clone = document.getElementById('itemTemplate').content.cloneNode(true);
+    var itemCard = clone.querySelector('.item-card');
     orderCard.querySelector('.items').appendChild(clone);
+    return itemCard;
   }
 
   function removeItem(btn) {
     var orderCard = btn.closest('.order-card');
-    var cards = orderCard.querySelectorAll('.item-card');
-    if (cards.length <= 1) return; // 배송지당 최소 1개는 유지
+    if (orderCard.querySelectorAll('.item-card').length <= 1) return; // 배송지당 최소 1개는 유지
     btn.closest('.item-card').remove();
   }
 
@@ -422,12 +510,41 @@
   function searchAddress(orderCard) {
     new daum.Postcode({
       oncomplete: function (data) {
-        var base = data.roadAddress || data.jibunAddress;
-        orderCard.querySelector('.addressBase').value = base;
-        orderCard.dataset.zipcode = data.zonecode;
+        orderCard.querySelector('.addressBase').value = data.roadAddress || data.jibunAddress;
+        orderCard.querySelector('.zipcodeInput').value = data.zonecode;
         orderCard.querySelector('.addressDetail').focus();
       },
     }).open();
+  }
+
+  function setSelectValue(select, value) {
+    var found = Array.from(select.options).some(function (o) { return o.value === value; });
+    if (!found) {
+      var opt = document.createElement('option');
+      opt.value = value;
+      opt.textContent = value || '(미지정)';
+      select.appendChild(opt);
+    }
+    select.value = value;
+  }
+
+  // 불러온 배송지 데이터를 카드에 채운다.
+  function fillOrderCard(card, d) {
+    card.querySelector('.ordererCard').value = d.orderer;
+    card.querySelector('.recipientName').value = d.recipient.name;
+    card.querySelector('.recipientPhone').value = d.recipient.phone;
+    var base = card.querySelector('.addressBase');
+    base.value = d.recipient.address; // 불러온 주소는 통째로 넣고, 직접 고칠 수 있게 readonly 해제
+    base.readOnly = false;
+    card.querySelector('.zipcodeInput').value = d.recipient.zipcode;
+    card.querySelector('.deliveryMemo').value = d.deliveryMemo;
+    d.items.forEach(function (it) {
+      var itemCard = addItem(card);
+      itemCard.querySelector('.item-name').value = it.name;
+      setSelectValue(itemCard.querySelector('.item-category'), it.category);
+      itemCard.querySelector('.item-qty').value = it.qty;
+      itemCard.dataset.extra = JSON.stringify(it.extra);
+    });
   }
 
   // 배송지 카드 하나를 읽어서 검증한다. 문제 있으면 {error}, 없으면 {delivery}를 반환.
@@ -438,7 +555,8 @@
     var addressDetail = card.querySelector('.addressDetail').value.trim();
     var address = addressDetail ? (addressBase + ' ' + addressDetail) : addressBase;
     var deliveryMemo = card.querySelector('.deliveryMemo').value.trim();
-    var zipcode = card.dataset.zipcode || '';
+    var zipcode = card.querySelector('.zipcodeInput').value.trim();
+    var orderer = card.querySelector('.ordererCard').value.trim();
 
     if (!recipientName) return { error: tag + '받는분 성명을 입력해주세요' };
     if (!recipientPhone) return { error: tag + '연락처를 입력해주세요' };
@@ -446,10 +564,14 @@
 
     var items = [];
     card.querySelectorAll('.item-card').forEach(function (itemCard) {
-      var name = itemCard.querySelector('.item-name').value.trim();
-      var category = itemCard.querySelector('.item-category').value;
-      var qty = parseInt(itemCard.querySelector('.item-qty').value, 10);
-      items.push({ name: name, category: category, qty: qty });
+      var extra = {};
+      try { extra = JSON.parse(itemCard.dataset.extra || '{}'); } catch (e) { extra = {}; }
+      items.push({
+        name: itemCard.querySelector('.item-name').value.trim(),
+        category: itemCard.querySelector('.item-category').value,
+        qty: parseInt(itemCard.querySelector('.item-qty').value, 10),
+        extra: extra,
+      });
     });
 
     if (items.length === 0) return { error: tag + '상품을 1개 이상 입력해주세요' };
@@ -460,6 +582,7 @@
 
     return {
       delivery: {
+        orderer: orderer,
         recipient: { name: recipientName, phone: recipientPhone, zipcode: zipcode, address: address },
         deliveryMemo: deliveryMemo,
         items: items,
@@ -467,19 +590,21 @@
     };
   }
 
-  function completeOrder(btn) {
-    var card = btn.closest('.order-card');
+  // 카드를 검증하고 통과하면 한 줄 요약으로 접는다. 실패 시 에러 메시지를 반환.
+  function collapseCard(card) {
     var result = readOrderCard(card, '');
-    if (result.error) {
-      setStatus(result.error, 'error');
-      return;
-    }
-    setStatus('');
+    if (result.error) return result.error;
     var d = result.delivery;
     card.querySelector('.summary-text').textContent = d.recipient.name + ' · ' + d.recipient.phone + ' · 상품 ' + d.items.length + '개';
     card.classList.add('collapsed');
     card.querySelector('.order-detail').style.display = 'none';
     card.querySelector('.order-summary').style.display = 'flex';
+    return '';
+  }
+
+  function completeOrder(btn) {
+    var error = collapseCard(btn.closest('.order-card'));
+    setStatus(error, error ? 'error' : '');
   }
 
   function editOrder(btn) {
@@ -490,41 +615,163 @@
   }
 
   // 배송지 카드 / 상품 카드 안의 버튼 클릭을 한 곳에서 처리 (이벤트 위임)
-  document.getElementById('orders').addEventListener('click', function (e) {
-    var btn = e.target.closest('button[data-action]');
-    if (!btn) return;
-    var action = btn.dataset.action;
-    if (action === 'remove-order') removeOrder(btn);
-    else if (action === 'add-item') addItem(btn.closest('.order-card'));
-    else if (action === 'remove-item') removeItem(btn);
-    else if (action === 'search-address') searchAddress(btn.closest('.order-card'));
-    else if (action === 'qty-minus') changeQty(btn, -1);
-    else if (action === 'qty-plus') changeQty(btn, 1);
-    else if (action === 'complete-order') completeOrder(btn);
-    else if (action === 'edit-order') editOrder(btn);
-  });
-  document.getElementById('orders').addEventListener('input', function (e) {
-    if (e.target.classList.contains('item-qty')) sanitizeQty(e.target);
-  });
-  document.getElementById('orders').addEventListener(
-    'blur',
-    function (e) {
-      if (e.target.classList.contains('item-qty')) sanitizeQty(e.target, true);
-    },
-    true
-  );
+  function wireContainer(container) {
+    container.addEventListener('click', function (e) {
+      var btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      var action = btn.dataset.action;
+      if (action === 'remove-order') removeOrder(btn);
+      else if (action === 'add-item') addItem(btn.closest('.order-card'));
+      else if (action === 'remove-item') removeItem(btn);
+      else if (action === 'search-address') searchAddress(btn.closest('.order-card'));
+      else if (action === 'qty-minus') changeQty(btn, -1);
+      else if (action === 'qty-plus') changeQty(btn, 1);
+      else if (action === 'complete-order') completeOrder(btn);
+      else if (action === 'edit-order') editOrder(btn);
+    });
+    container.addEventListener('input', function (e) {
+      if (e.target.classList.contains('item-qty')) sanitizeQty(e.target);
+    });
+    container.addEventListener(
+      'blur',
+      function (e) {
+        if (e.target.classList.contains('item-qty')) sanitizeQty(e.target, true);
+      },
+      true
+    );
+  }
 
-  addOrder(); // 첫 배송지 카드 1개 기본 생성
+  wireContainer(document.getElementById('orders'));
+  wireContainer(document.getElementById('editOrders'));
+  addOrder(document.getElementById('orders')); // 첫 배송지 카드 1개 기본 생성
 
-  var HEADERS = ['발주처', '출고구분', '제품명', '수량', '받는분 성명', '우편번호', '배송지', '연락처', '배송메모', '비고', '택배사', '운송장번호', '주문자 성명'];
+  /* ---------- 발주서 수정: 엑셀 불러오기 ---------- */
+
+  // 시트 전체(2차원 배열)를 배송지 목록으로 변환한다. 같은 받는분 정보가 연속되면 한 배송지로 묶는다.
+  function parseOrderRows(aoa) {
+    if (!aoa.length) return { error: '빈 파일입니다.' };
+
+    var header = aoa[0].map(function (h) { return String(h).trim(); });
+    var idx = {};
+    HEADERS.forEach(function (h) { idx[h] = header.indexOf(h); });
+
+    var missing = ['제품명', '수량', '받는분 성명', '배송지', '연락처'].filter(function (h) { return idx[h] < 0; });
+    if (missing.length) return { error: '발주서 양식이 아닙니다. (없는 항목: ' + missing.join(', ') + ')' };
+
+    function cell(row, h) {
+      if (idx[h] < 0) return '';
+      var v = row[idx[h]];
+      return v === undefined || v === null ? '' : String(v).trim();
+    }
+
+    var deliveries = [];
+    var lastKey = null;
+    for (var r = 1; r < aoa.length; r++) {
+      var row = aoa[r];
+      if (row.every(function (v) { return String(v).trim() === ''; })) continue; // 빈 줄 건너뜀
+
+      var zipcode = cell(row, '우편번호');
+      if (/^\d{4}$/.test(zipcode)) zipcode = '0' + zipcode; // 엑셀이 앞자리 0을 지운 경우 복원
+
+      var info = {
+        orderer: cell(row, '주문자 성명'),
+        recipient: {
+          name: cell(row, '받는분 성명'),
+          phone: cell(row, '연락처'),
+          zipcode: zipcode,
+          address: cell(row, '배송지'),
+        },
+        deliveryMemo: cell(row, '배송메모'),
+      };
+      var extra = {};
+      EXTRA_HEADERS.forEach(function (h) { extra[h] = cell(row, h); });
+      var item = {
+        name: cell(row, '제품명'),
+        category: cell(row, '출고구분'),
+        qty: cell(row, '수량').replace(/[^0-9]/g, ''),
+        extra: extra,
+      };
+
+      var key = JSON.stringify(info);
+      if (key === lastKey) {
+        deliveries[deliveries.length - 1].items.push(item);
+      } else {
+        info.items = [item];
+        deliveries.push(info);
+        lastKey = key;
+      }
+    }
+
+    if (!deliveries.length) return { error: '불러올 발주 내용이 없습니다.' };
+    return { deliveries: deliveries };
+  }
+
+  function loadOrderFile(file) {
+    var reader = new FileReader();
+    reader.onerror = function () { setStatus('파일을 읽을 수 없습니다.', 'error'); };
+    reader.onload = function () {
+      var parsed;
+      try {
+        var wb = XLSX.read(reader.result, { type: 'array' });
+        var ws = wb.Sheets[wb.SheetNames[0]];
+        var aoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
+        parsed = parseOrderRows(aoa);
+      } catch (err) {
+        parsed = { error: '엑셀 파일을 읽을 수 없습니다.' };
+      }
+      if (parsed.error) {
+        setStatus(parsed.error, 'error');
+        return;
+      }
+
+      var container = document.getElementById('editOrders');
+      container.innerHTML = '';
+      var itemCount = 0;
+      parsed.deliveries.forEach(function (d) {
+        itemCount += d.items.length;
+        var card = addOrder(container, d);
+        collapseCard(card); // 필수 항목이 비어있으면 펼쳐진 채로 남는다
+      });
+
+      editLoaded = true;
+      loadedBaseName = file.name.replace(/\.[^.]+$/, '');
+      document.getElementById('editFileName').textContent = '불러온 파일: ' + file.name + ' (배송지 ' + parsed.deliveries.length + '곳, 상품 ' + itemCount + '개)';
+      document.getElementById('editOrdersSection').style.display = '';
+      setStatus('');
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  document.getElementById('editFile').addEventListener('change', function (e) {
+    var file = e.target.files[0];
+    if (file) loadOrderFile(file);
+    e.target.value = ''; // 같은 파일을 다시 선택해도 불러오도록 초기화
+  });
+
+  /* ---------- 탭 전환 ---------- */
+
+  function setMode(next) {
+    mode = next;
+    var isEdit = next === 'edit';
+    document.getElementById('createView').style.display = isEdit ? 'none' : '';
+    document.getElementById('editView').style.display = isEdit ? '' : 'none';
+    document.getElementById('tabCreate').classList.toggle('active', !isEdit);
+    document.getElementById('tabEdit').classList.toggle('active', isEdit);
+    document.getElementById('submitBtn').textContent = isEdit ? '수정본 저장' : '발주서(엑셀파일) 생성';
+    document.getElementById('overlayText').textContent = isEdit ? '수정본 저장 중...' : '발주서(엑셀파일) 생성 중...';
+    setStatus('');
+  }
+
+  /* ---------- 엑셀 저장 ---------- */
 
   // 브라우저 안에서 바로 이지어드민 발주 양식(xlsx)을 만들어 다운로드한다. (서버 없음)
-  function buildAndDownloadXlsx(orderer, deliveries) {
+  function buildAndDownloadXlsx(deliveries, fileName) {
     var rows = [];
     deliveries.forEach(function (d) {
       d.items.forEach(function (item) {
+        var ex = item.extra || {};
         rows.push([
-          '', // 발주처 (비워둠 - 업로드 시 판매처는 이지어드민 쪽에서 지정됨)
+          ex['발주처'] || '', // 업로드 시 판매처는 이지어드민 쪽에서 지정됨
           item.category,
           item.name,
           item.qty,
@@ -533,26 +780,24 @@
           d.recipient.address,
           d.recipient.phone,
           d.deliveryMemo || '',
-          '', // 비고
-          '', // 택배사 - 이지어드민에서 채워짐
-          '', // 운송장번호 - 이지어드민에서 채워짐
-          orderer,
+          ex['비고'] || '',
+          ex['택배사'] || '', // 이지어드민에서 채워짐
+          ex['운송장번호'] || '', // 이지어드민에서 채워짐
+          d.orderer,
         ]);
       });
     });
 
-    var sheetData = [HEADERS].concat(rows);
-    var ws = XLSX.utils.aoa_to_sheet(sheetData);
+    var ws = XLSX.utils.aoa_to_sheet([HEADERS].concat(rows));
     var wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
-
-    var today = new Date();
-    var dateStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-    var label = deliveries.length > 1 ? (deliveries[0].recipient.name + ' 외 ' + (deliveries.length - 1) + '건') : (deliveries[0].recipient.name || orderer || '발주');
-    var fileName = '발주_' + label + '_' + dateStr + '.xlsx';
-
     XLSX.writeFile(wb, fileName);
     return rows.length;
+  }
+
+  function todayString() {
+    var t = new Date();
+    return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
   }
 
   function setStatus(msg, cls) {
@@ -562,15 +807,29 @@
   }
 
   function submitOrder() {
+    var isEdit = mode === 'edit';
+    if (isEdit && !editLoaded) return setStatus('먼저 수정할 발주서 파일을 첨부해주세요', 'error');
+
+    var container = document.getElementById(isEdit ? 'editOrders' : 'orders');
     var orderer = document.getElementById('orderer').value.trim();
-    var orderCards = Array.from(document.querySelectorAll('.order-card'));
+    var orderCards = Array.from(container.querySelectorAll('.order-card'));
     var deliveries = [];
 
     for (var oi = 0; oi < orderCards.length; oi++) {
       var tag = orderCards.length > 1 ? ('배송지 #' + (oi + 1) + ' - ') : '';
       var result = readOrderCard(orderCards[oi], tag);
       if (result.error) return setStatus(result.error, 'error');
+      if (!isEdit) result.delivery.orderer = orderer; // 생성 화면은 주문자 1명을 모든 배송지에 적용
       deliveries.push(result.delivery);
+    }
+
+    var fileName;
+    if (isEdit) {
+      fileName = loadedBaseName.replace(/_수정$/, '') + '_수정.xlsx';
+    } else {
+      var first = deliveries[0].recipient.name;
+      var label = deliveries.length > 1 ? (first + ' 외 ' + (deliveries.length - 1) + '건') : (first || orderer || '발주');
+      fileName = '발주_' + label + '_' + todayString() + '.xlsx';
     }
 
     document.getElementById('overlay').classList.add('show');
@@ -578,13 +837,15 @@
     setStatus('');
 
     try {
-      var rowCount = buildAndDownloadXlsx(orderer, deliveries);
-      setStatus('발주 파일이 다운로드되었습니다. (배송지 ' + deliveries.length + '곳, 총 ' + rowCount + '개 품목) 이지어드민에 업로드해주세요.', 'ok');
-
-      document.getElementById('orders').innerHTML = '';
-      orderCount = 0;
-      addOrder();
-      document.getElementById('orderer').value = '';
+      var rowCount = buildAndDownloadXlsx(deliveries, fileName);
+      if (isEdit) {
+        setStatus('수정된 발주서가 저장되었습니다. (배송지 ' + deliveries.length + '곳, 총 ' + rowCount + '개 품목)', 'ok');
+      } else {
+        setStatus('발주 파일이 다운로드되었습니다. (배송지 ' + deliveries.length + '곳, 총 ' + rowCount + '개 품목) 이지어드민에 업로드해주세요.', 'ok');
+        container.innerHTML = '';
+        addOrder(container);
+        document.getElementById('orderer').value = '';
+      }
     } catch (err) {
       setStatus(err.message || '오류가 발생했습니다. 다시 시도해주세요.', 'error');
     } finally {
